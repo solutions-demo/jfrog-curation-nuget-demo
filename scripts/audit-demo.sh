@@ -3,6 +3,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$ROOT/env.local.sh" ]]; then
+    source "$ROOT/env.local.sh"
+fi
 : "${JFROG_SERVER_ID:?Set JFROG_SERVER_ID to a configured JFrog CLI server ID.}"
 : "${NUGET_VIRTUAL_REPO:?Set NUGET_VIRTUAL_REPO to your NuGet virtual repository key.}"
 if [[ ! "$NUGET_VIRTUAL_REPO" =~ ^[A-Za-z0-9._-]+$ ]]; then

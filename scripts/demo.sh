@@ -3,6 +3,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$ROOT/env.local.sh" ]]; then
+    source "$ROOT/env.local.sh"
+fi
 SCENARIO="${1:-baseline}"
 case "$SCENARIO" in
     baseline|immaturity|cvs|vulnerability|license) ;;

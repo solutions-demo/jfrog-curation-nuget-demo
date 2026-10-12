@@ -3,6 +3,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$ROOT/env.local.sh" ]]; then
+    source "$ROOT/env.local.sh"
+fi
 PROTOCOL="${1:-v2}"
 case "$PROTOCOL" in
     v2) NUGET_V2=true ;;

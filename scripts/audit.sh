@@ -2,6 +2,10 @@
 # Show recent NuGet Curation download or CVS events.
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$ROOT/env.local.sh" ]]; then
+    source "$ROOT/env.local.sh"
+fi
 : "${JFROG_SERVER_ID:?Set JFROG_SERVER_ID to a configured JFrog CLI server ID.}"
 : "${NUGET_REMOTE_REPO:?Set NUGET_REMOTE_REPO to your curated NuGet remote repository key.}"
 
