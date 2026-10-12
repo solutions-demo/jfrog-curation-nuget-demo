@@ -51,19 +51,10 @@ echo "Isolated NuGet HTTP cache: $NUGET_HTTP_CACHE_PATH"
 echo "Log: $LOG"
 
 cd "$ROOT"
-cat > NuGet.Config <<EOF
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="Artifactory" value="$NUGET_V2_URL" />
-  </packageSources>
-</configuration>
-EOF
-if ! jf dotnet-config "--server-id-resolve=$JFROG_SERVER_ID" \
-    "--repo-resolve=$NUGET_VIRTUAL_REPO" "--nuget-v2=$NUGET_V2"; then
-    echo "JFrog CLI configuration failed. Check server ID $JFROG_SERVER_ID." >&2
-    exit 1
+if [[ "$SCENARIO" == cvs ]]; then
+    "$ROOT/scripts/setup.sh" v3
+else
+    "$ROOT/scripts/setup.sh" v2
 fi
 
 if jf dotnet restore NuGetDemo.csproj --no-cache --force --verbosity normal \
