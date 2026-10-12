@@ -31,9 +31,9 @@ In **Administration → Repositories**, create a NuGet **remote** repository tha
 | JFrog platform URL | `https://example.jfrog.io` |
 | JFrog CLI server ID | `my-jfrog-server` |
 
-In **Administration → Curation → Remote Repositories**, connect the **remote** repository to Curation. The application will resolve through the virtual repository, but Curation policies must be scoped to the remote key. Keep the virtual limited to this remote for a predictable demo. Enable Pass-Through Curation on the remote if you want to run `jf ca`; JFrog lists it as required for NuGet Curation audit. [JFrog repository connection guide](https://docs.jfrog.com/security/docs/connect-remote-repositories-to-curation), [Curation Compliance Check](https://docs.jfrog.com/security/docs/curation-compliance-check), [Artifactory NuGet repository guide](https://docs.jfrog.com/artifactory/docs/nuget-repositories).
+In **Administration → Curation → Remote Repositories**, connect the **remote** repository to Curation. The application will resolve through the virtual repository, but Curation policies must be scoped to the remote key. Keep the virtual limited to this remote for a predictable demo. Enable Pass-Through Curation on the remote if you want to run `jf ca`; JFrog lists it as required for NuGet Curation audit. Enable **Force Authentication** on the NuGet virtual repository used by the demo. This makes Artifactory challenge package downloads so the client sends its credentials; the demo scripts use the credentials in your JFrog CLI server configuration. Clients that relied on anonymous access to that virtual will need another endpoint; JFrog recommends a separate virtual for anonymous access. [JFrog repository connection guide](https://docs.jfrog.com/security/docs/connect-remote-repositories-to-curation), [Curation Compliance Check](https://docs.jfrog.com/security/docs/curation-compliance-check), [JFrog NuGet authentication guidance](https://jfrog.com/help/r/nuget-s-force-authentication-with-virtual-repositories-and-anonymous-access-enabled-explained/nuget-s-force-authentication-with-virtual-repositories-and-anonymous-access-enabled-explained?contentId=u29TRWqNxOhokjggu4dHOw).
 
-Check the V3 feed before demonstrating CVS. A `dotnet restore` against its V3 index must be able to download a baseline package. A V3 feed that lists versions but returns `404` for package content cannot complete the CVS scenario, even when CVS selects a compliant version.
+Check the V3 feed before demonstrating CVS or `jf ca` by running `./scripts/demo.sh cvs` or an authenticated `jf dotnet restore` against its V3 index. It must be able to download a package. If metadata succeeds but `.../registration-semver2/Download/...` returns `404`, check Force Authentication on the virtual and the CLI server credentials.
 
 ## 3. Create the demo conditions and policies
 
@@ -45,7 +45,7 @@ First inspect existing policies for the remote repository. Global policies also 
 | `NuGet Demo - CVE-2024-21907` | Package Vulnerable to a Specific CVE (`CVEName`) | `cve_name = CVE-2024-21907` |
 | `NuGet Demo - PolyForm Noncommercial` | Block list by License (`BannedLicenses`) | Ban `PolyForm-Noncommercial-1.0.0`; set multiple-license permissive approach to `false` |
 
-JFrog Catalog reported `PolyForm-Noncommercial-1.0.0` for EPPlus 5.0.3 in the reference environment. **Check this version in your own Catalog** before creating the license condition; use the identifier that your Catalog displays.
+JFrog Catalog reported `PolyForm-Noncommercial-1.0.0` for EPPlus 5.0.3 and 5.8.0 in the reference environment. **Check these versions in your own Catalog** before creating the license condition; use the identifier that your Catalog displays.
 
 For each condition, create a policy in **Application → Curation → Policies** with the same name and these settings:
 
@@ -76,14 +76,15 @@ export NUGET_REMOTE_REPO=demo-nuget-remote
 export NUGET_VIRTUAL_REPO=demo-nuget-virtual
 ./scripts/setup.sh
 dotnet nuget list source
-jf ca  # Requires a working Curation audit NuGet feed; see the reference-instance note below
+jf ca  # Baseline project: expected to report 0 blocked packages
+./scripts/audit-demo.sh  # Separate dependency file: expected CVE and license findings
 ```
 
 `JFROG_BASE_URL` is the HTTPS platform URL **without** `/artifactory` or a trailing path. `JFROG_SERVER_ID` must match the ID shown by `jf config show`. Use the exact repository keys created in step 2. The scripts do not contain instance credentials.
 
 `NuGet.Config.example` is the distributed placeholder. `scripts/setup.sh` creates an ignored local `NuGet.Config` with only your Artifactory source and configures both `jf dotnet` and `jf nuget`. The latter is needed by `jf ca`; `jf dotnet-config` alone does not configure it. The setup script does not change global .NET or JFrog CLI configuration. Your local `env.local.sh` can hold the four exports above; it is ignored by Git.
 
-`jf ca` audits the default `baseline` dependencies in `NuGetDemo.csproj`. Use the demo commands below for the policy-block scenarios. For CVS, use `scripts/demo.sh cvs`, which calls `scripts/setup.sh v3`; plain `dotnet restore` after the default setup uses V2 and does not exercise CVS. Rerun `scripts/setup.sh` to restore V2 after a CVS run.
+`jf ca` in the repository root audits the default `baseline` dependencies in `NuGetDemo.csproj`. `scripts/audit-demo.sh` audits the separate `audit-issues/AuditIssues.csproj` and prints policy findings. It creates an isolated NuGet configuration and cache, so it does not change the root project setup. Use the demo commands below for the policy-block scenarios. For CVS, use `scripts/demo.sh cvs`, which calls `scripts/setup.sh v3`; plain `dotnet restore` after the default setup uses V2 and does not exercise CVS. Rerun `scripts/setup.sh` to restore V2 after a CVS run.
 
 ## 5. Run and verify the scenarios
 
@@ -120,6 +121,10 @@ Expected output: `{"customer":"JFrog Curation demo","quantity":2,"valid":true}`.
 
 ## 6. Inspect Curation audit events
 
+For a live `jf ca` demonstration, run `./scripts/audit-demo.sh` first. Its dependency file pins `Newtonsoft.Json` **12.0.1** and `EPPlus` **5.8.0** with exact NuGet version ranges. On the reference instance, the command returned **2 blocked packages**: CVE-2024-21907 for Newtonsoft.Json and the `PolyForm-Noncommercial-1.0.0` license for EPPlus. The result depends on the policies and Catalog data in your environment. The script returns success when `jf ca` successfully produces a report, even when that report contains blocked packages.
+
+The separate project is intentionally never restored as part of the normal application build. Run it through the script so the CLI points only to your configured Artifactory virtual repository.
+
 ```bash
 ./scripts/audit.sh FluentValidation
 ./scripts/audit.sh --cvs FluentValidation
@@ -131,14 +136,12 @@ The audit script filters results to `NUGET_REMOTE_REPO`. It uses the [download a
 
 ## Reference-environment result and troubleshooting
 
-On October 12, 2026, the reference instance blocked the three scenario packages and passed the baseline. Its policy IDs were `1043` (88-day immaturity), `1044` (CVE), and `1045` (license); **do not reuse these IDs** in another environment. The CVS audit selected FluentValidation 12.1.1 over 12.2.0, but this instance's V3 registration response supplied a `packageContent` URL under `.../registration-semver2/Download/...` that returned `404`. The V2 scenarios worked. This is a limitation of that instance's V3 download flow, not evidence that CVS is unsupported for NuGet.
-
-After the setup fix, `jf ca` detects this project, reads `nuget.yaml`, and selects `soleng-dev-nuget`. On this reference instance, its dependency restore still fails through the Curation audit V3 feed at `/artifactory/api/curation/audit/api/nuget/v3/soleng-dev-nuget/index.json`: it lists the baseline packages but cannot download their `.nupkg` files. The same failure occurred when `jf ca` detected the native Artifactory source instead of `nuget.yaml`. Fixing this feed is required for an end-to-end CLI Curation audit here; the Downloads and CVS audit views remain available for the policy demonstrations.
+On October 12, 2026, the reference instance blocked the three scenario packages and passed the baseline. Its policy IDs were `1043` (88-day immaturity), `1044` (CVE), and `1045` (license); **do not reuse these IDs** in another environment. Initially, its V3 feed listed packages but returned `404` from the advertised `.../registration-semver2/Download/...` URLs. Enabling **Force Authentication** on the `soleng-dev-nuget` virtual repository fixed both the normal V3 restore and the Curation audit feed restore. A fresh `jf ca` in the root reported **0 blocked packages**; `./scripts/audit-demo.sh` reported **2 blocked packages**. The CVS scenario restored successfully and selected FluentValidation 12.1.1 instead of 12.2.0.
 
 | Symptom | Check |
 | --- | --- |
 | `403` on a demo package | Match the package, version, and policy in Downloads audit. Check for other global policies. |
-| `404` or “feed lists package, download failed” in `cvs` | Check the V3 index, registration response, and `packageContent` URL of your virtual repository. |
+| `404` or “feed lists package, download failed” in `cvs` or `jf ca` | Check Force Authentication on the virtual, client credentials, and the V3 registration `packageContent` URL. |
 | `cvs` selects no alternative | Confirm CVS is enabled, V3 is used, the requested version range allows an older release, and one such version passes all policies. |
 | A blocking scenario succeeds | Verify remote-repository Curation connection, policy scope and action, Catalog data, package age, and cache enforcement. |
 | Direct nuget.org request appears | Check your local NuGet sources and run through `scripts/demo.sh`; the generated `NuGet.Config` clears inherited sources. |
