@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DemoScenario Condition="'$(DemoScenario)' == ''">baseline</DemoScenario>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DemoScenario)' == 'license'">
+    <DefineConstants>$(DefineConstants);DEMO_LICENSE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.0.0" Condition="'$(DemoScenario)' != 'immaturity' and '$(DemoScenario)' != 'cvs'" />
+    <PackageReference Include="FluentValidation" Version="12.2.0" Condition="'$(DemoScenario)' == 'immaturity'" />
+    <PackageReference Include="FluentValidation" Version="12.*" Condition="'$(DemoScenario)' == 'cvs'" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" Condition="'$(DemoScenario)' != 'vulnerability'" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" Condition="'$(DemoScenario)' == 'vulnerability'" />
+    <PackageReference Include="EPPlus" Version="5.0.3" Condition="'$(DemoScenario)' == 'license'" />
+  </ItemGroup>
+
+  <Target Name="ValidateDemoScenario" BeforeTargets="CollectPackageReferences">
+    <Error Condition="'$(DemoScenario)' != 'baseline' and '$(DemoScenario)' != 'immaturity' and '$(DemoScenario)' != 'cvs' and '$(DemoScenario)' != 'vulnerability' and '$(DemoScenario)' != 'license'"
+           Text="Unknown DemoScenario '$(DemoScenario)'. Use baseline, immaturity, cvs, vulnerability, or license." />
+  </Target>
+</Project>
