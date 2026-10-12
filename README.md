@@ -77,6 +77,9 @@ export NUGET_VIRTUAL_REPO=demo-nuget-virtual
 ./scripts/setup.sh
 dotnet nuget list source
 jf ca  # Baseline project: expected to report 0 blocked packages
+cd audit-issues
+jf ca  # Expected: CVE and license policy findings
+cd ..
 ./scripts/audit-demo.sh  # Separate dependency file: expected CVE and license findings
 ```
 
@@ -84,7 +87,7 @@ jf ca  # Baseline project: expected to report 0 blocked packages
 
 `NuGet.Config.example` is the distributed placeholder. `scripts/setup.sh` creates an ignored local `NuGet.Config` with only your Artifactory source and configures both `jf dotnet` and `jf nuget`. The latter is needed by `jf ca`; `jf dotnet-config` alone does not configure it. The setup script does not change global .NET or JFrog CLI configuration. Put the four exports above in a local `env.local.sh` at the repository root if you do not want to export them in every shell. All demo scripts load that file automatically when it exists; it is ignored by Git.
 
-`jf ca` in the repository root audits the default `baseline` dependencies in `NuGetDemo.csproj`. `scripts/audit-demo.sh` audits the separate `audit-issues/AuditIssues.csproj` and prints policy findings. It creates an isolated NuGet configuration and cache, so it does not change the root project setup. Use the demo commands below for the policy-block scenarios. For CVS, use `scripts/demo.sh cvs`, which calls `scripts/setup.sh v3`; plain `dotnet restore` after the default setup uses V2 and does not exercise CVS. Rerun `scripts/setup.sh` to restore V2 after a CVS run.
+`jf ca` in the repository root audits the default `baseline` dependencies in `NuGetDemo.csproj`, so **0 blocked packages is the expected result there**. `scripts/setup.sh` also configures `audit-issues/` for a direct `jf ca` run. Run that command from `audit-issues/` to show the CVE and license findings. Alternatively, `scripts/audit-demo.sh` runs the same dependency file with an isolated NuGet configuration and cache. Use the demo commands below for the policy-block scenarios. For CVS, use `scripts/demo.sh cvs`, which calls `scripts/setup.sh v3`; plain `dotnet restore` after the default setup uses V2 and does not exercise CVS. Rerun `scripts/setup.sh` to restore V2 after a CVS run.
 
 ## 5. Run and verify the scenarios
 
@@ -121,7 +124,7 @@ Expected output: `{"customer":"JFrog Curation demo","quantity":2,"valid":true}`.
 
 ## 6. Inspect Curation audit events
 
-For a live `jf ca` demonstration, run `./scripts/audit-demo.sh` first. Its dependency file pins `Newtonsoft.Json` **12.0.1** and `EPPlus` **5.8.0** with exact NuGet version ranges. On the reference instance, the command returned **2 blocked packages**: CVE-2024-21907 for Newtonsoft.Json and the `PolyForm-Noncommercial-1.0.0` license for EPPlus. The result depends on the policies and Catalog data in your environment. The script returns success when `jf ca` successfully produces a report, even when that report contains blocked packages.
+For a live `jf ca` demonstration, run `cd audit-issues && jf ca` after setup. Its dependency file pins `Newtonsoft.Json` **12.0.1** and `EPPlus` **5.8.0** with exact NuGet version ranges. On the reference instance, the command returned **2 blocked packages**: CVE-2024-21907 for Newtonsoft.Json and the `PolyForm-Noncommercial-1.0.0` license for EPPlus. The result depends on the policies and Catalog data in your environment. `./scripts/audit-demo.sh` from the root is an alternative with isolated caches. The command returns success when `jf ca` produces a report, even when that report contains blocked packages.
 
 The separate project is intentionally never restored as part of the normal application build. Run it through the script so the CLI points only to your configured Artifactory virtual repository.
 
