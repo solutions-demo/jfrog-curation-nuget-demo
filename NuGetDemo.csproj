@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
     <PackageReference Include="FluentValidation" Version="12.0.0" Condition="'$(DemoScenario)' != 'immaturity' and '$(DemoScenario)' != 'cvs'" />
     <PackageReference Include="FluentValidation" Version="12.2.0" Condition="'$(DemoScenario)' == 'immaturity'" />
     <PackageReference Include="FluentValidation" Version="12.*" Condition="'$(DemoScenario)' == 'cvs'" />

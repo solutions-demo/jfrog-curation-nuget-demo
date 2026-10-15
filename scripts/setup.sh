@@ -47,7 +47,14 @@ jf dotnet-config "--server-id-resolve=$JFROG_SERVER_ID" \
 jf nuget-config "--server-id-resolve=$JFROG_SERVER_ID" \
     "--repo-resolve=$NUGET_VIRTUAL_REPO" "--nuget-v2=$NUGET_V2"
 
-# Make `cd audit-issues && jf ca` work without another setup step.
+# Configure each scenario so `jf ca` works directly from its directory.
+for SCENARIO in baseline immaturity vulnerability license cvs; do
+    (
+        cd "$ROOT/scenarios/$SCENARIO"
+        jf nuget-config "--server-id-resolve=$JFROG_SERVER_ID" \
+            "--repo-resolve=$NUGET_VIRTUAL_REPO" --nuget-v2=false
+    )
+done
 (
     cd "$ROOT/audit-issues"
     jf nuget-config "--server-id-resolve=$JFROG_SERVER_ID" \
@@ -56,4 +63,5 @@ jf nuget-config "--server-id-resolve=$JFROG_SERVER_ID" \
 
 echo "Configured .NET, NuGet Curation audit, and local NuGet.Config for $NUGET_VIRTUAL_REPO ($PROTOCOL)."
 echo "Baseline audit: jf ca (0 blocked packages expected)"
-echo "Policy findings: (cd audit-issues && jf ca)"
+echo "Scenario audits: (cd scenarios/<scenario> && jf ca)"
+echo "Combined CVE and license audit: (cd audit-issues && jf ca)"

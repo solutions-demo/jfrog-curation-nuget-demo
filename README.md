@@ -87,7 +87,7 @@ cd ..
 
 `NuGet.Config.example` is the distributed placeholder. `scripts/setup.sh` creates an ignored local `NuGet.Config` with only your Artifactory source and configures both `jf dotnet` and `jf nuget`. The latter is needed by `jf ca`; `jf dotnet-config` alone does not configure it. The setup script does not change global .NET or JFrog CLI configuration. Put the four exports above in a local `env.local.sh` at the repository root if you do not want to export them in every shell. All demo scripts load that file automatically when it exists; it is ignored by Git.
 
-`jf ca` in the repository root audits the default `baseline` dependencies in `NuGetDemo.csproj`, so **0 blocked packages is the expected result there**. `scripts/setup.sh` also configures `audit-issues/` for a direct `jf ca` run. Run that command from `audit-issues/` to show the CVE and license findings. Alternatively, `scripts/audit-demo.sh` runs the same dependency file with an isolated NuGet configuration and cache. Use the demo commands below for the policy-block scenarios. For CVS, use `scripts/demo.sh cvs`, which calls `scripts/setup.sh v3`; plain `dotnet restore` after the default setup uses V2 and does not exercise CVS. Rerun `scripts/setup.sh` to restore V2 after a CVS run.
+`jf ca` in the repository root audits the default `baseline` dependencies in `NuGetDemo.csproj`, so **0 blocked packages is the expected result there**. `scripts/setup.sh` configures `scenarios/<scenario>/` and `audit-issues/` for direct `jf ca` runs. Each scenario has a small project with the same direct package references as the corresponding `demo.sh` run. The `audit-issues/` project combines the CVE and license examples; `scripts/audit-demo.sh` runs it with an isolated NuGet cache. For CVS, use `scripts/demo.sh cvs`, which calls `scripts/setup.sh v3`; plain `dotnet restore` after the default setup uses V2 and does not exercise CVS. Rerun `scripts/setup.sh` to restore V2 after a CVS run.
 
 ## 5. Run and verify the scenarios
 
@@ -99,12 +99,26 @@ cd ..
 ./scripts/demo.sh cvs             # Expected: V3 selects a compliant FluentValidation 12.x
 ```
 
+After `./scripts/setup.sh`, run `jf ca` from the matching scenario directory:
+
+```bash
+(cd scenarios/baseline && jf ca)
+(cd scenarios/immaturity && jf ca)
+(cd scenarios/vulnerability && jf ca)
+(cd scenarios/license && jf ca)
+(cd scenarios/cvs && jf ca)
+```
+
+On the reference instance, these currently produce **0 blocked** for baseline, **1 CVE finding** for vulnerability, **1 license finding** for license, and **0 blocked** for CVS because a compliant FluentValidation version is selected. The immaturity audit currently exits with `NU1102`: the NuGet V3 audit feed does not offer blocked FluentValidation 12.2.0, so dependency restore stops before `jf ca` can report it. After `./scripts/demo.sh immaturity`, use `./scripts/audit.sh FluentValidation` to show the 12.2.0 block and its 88-day policy. After CVS, use `./scripts/audit.sh --cvs FluentValidation` to show the blocked 12.2.0 and approved 12.1.1 selection. [JFrog NuGet CVS behavior](https://docs.jfrog.com/security/docs/behavior-by-package).
+
+The application and each scenario project also reference `Microsoft.Extensions.Http` 9.0.0. A verified restore through Artifactory resolved 12 additional `Microsoft.Extensions.*` packages transitively, including `Microsoft.Extensions.DependencyInjection`, `Microsoft.Extensions.Logging`, and `Microsoft.Extensions.Options`. These indirect packages are part of the dependency graph inspected by `jf ca`.
+
 | Scenario | Direct package reference | What to verify |
 | --- | --- | --- |
 | `baseline` | FluentValidation 12.0.0; Newtonsoft.Json 13.0.3 | Restore succeeds through Artifactory. |
 | `immaturity` | FluentValidation 12.2.0 | Download audit shows the 88-day policy, unless the version is now old enough to pass. |
 | `vulnerability` | Newtonsoft.Json 12.0.1 | Download audit names the CVE-2024-21907 policy. |
-| `license` | EPPlus 5.0.3 | Download audit names the PolyForm license policy. |
+| `license` | EPPlus 5.0.3 | Download audit names the PolyForm license policy. `jf ca` currently resolves EPPlus 5.8.0 from this minimum-version reference and reports the same license policy. |
 | `cvs` | FluentValidation `12.*` | CVS audit shows the blocked version and the compliant version selected. A healthy V3 feed then completes the restore. |
 
 The immaturity example is **time-sensitive**: FluentValidation 12.2.0 was published on October 10, 2026. After it reaches 88 days old, select another recently published NuGet version, update `NuGetDemo.csproj`, and verify its publication date in your Catalog. The CVE and license examples also depend on your Catalog data and any other active policies.

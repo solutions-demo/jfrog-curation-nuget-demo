@@ -52,6 +52,12 @@ echo "NuGet V3 (CVS) enabled: $([[ "$NUGET_V2" == false ]] && echo yes || echo n
 echo "Isolated NuGet packages: $NUGET_PACKAGES"
 echo "Isolated NuGet HTTP cache: $NUGET_HTTP_CACHE_PATH"
 echo "Log: $LOG"
+echo "Matching Curation audit: (cd $ROOT/scenarios/$SCENARIO && jf ca)"
+if [[ "$SCENARIO" == immaturity ]]; then
+    echo "If jf ca stops with NU1102, inspect the block: $ROOT/scripts/audit.sh FluentValidation"
+elif [[ "$SCENARIO" == cvs ]]; then
+    echo "Inspect the version selection: $ROOT/scripts/audit.sh --cvs FluentValidation"
+fi
 
 cd "$ROOT"
 if [[ "$SCENARIO" == cvs ]]; then
