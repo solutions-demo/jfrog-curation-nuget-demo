@@ -111,7 +111,15 @@ After `./scripts/setup.sh`, run `jf ca` from a resolvable scenario directory:
 ./scripts/audit.sh FluentValidation  # Show its Curation Downloads audit event
 ```
 
-On the reference instance, the scenario audits previously produced **0 blocked** for baseline, **1 CVE finding** for vulnerability, **1 license finding** for license, and **0 blocked** for CVS because a compliant FluentValidation version was selected. Do not run `jf ca` inside `scenarios/immaturity`: the NuGet V3 audit feed omits blocked FluentValidation 12.2.0, so its dependency restore exits with `NU1102` before `jf ca` can produce a report. After `./scripts/demo.sh immaturity`, use `./scripts/audit.sh FluentValidation` to inspect its 88-day policy event. After CVS, use `./scripts/audit.sh --cvs FluentValidation` to inspect the blocked 12.2.0 and approved 12.1.1 selection. [JFrog NuGet CVS behavior](https://docs.jfrog.com/security/docs/behavior-by-package).
+To run one `jf ca` command across every scenario that the audit feed can restore, use this from the repository root:
+
+```bash
+jf ca --working-dirs=scenarios/baseline,scenarios/vulnerability,scenarios/license,scenarios/cvs,audit-issues
+```
+
+This was verified on October 16, 2026: the command completed and reported 0 blocked packages for baseline and CVS, 1 each for vulnerability and license, and 2 for `audit-issues`. It deliberately excludes `scenarios/immaturity` because including that project makes the whole audit fail during NuGet restore. `--include-cached-packages` does not change its `NU1102` result. The immaturity demonstration uses its Artifactory download attempt and Curation Downloads audit event instead.
+
+After `./scripts/demo.sh immaturity`, use `./scripts/audit.sh FluentValidation` to inspect its 88-day policy event. After CVS, use `./scripts/audit.sh --cvs FluentValidation` to inspect the blocked 12.2.0 and approved 12.1.1 selection. [JFrog NuGet CVS behavior](https://docs.jfrog.com/security/docs/behavior-by-package).
 
 The application and each scenario project also reference `Microsoft.Extensions.Http` 9.0.0. A verified restore through Artifactory resolved 12 additional `Microsoft.Extensions.*` packages transitively, including `Microsoft.Extensions.DependencyInjection`, `Microsoft.Extensions.Logging`, and `Microsoft.Extensions.Options`. These indirect packages are part of the dependency graph inspected by `jf ca`.
 
