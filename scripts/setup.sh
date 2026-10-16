@@ -47,7 +47,8 @@ jf dotnet-config "--server-id-resolve=$JFROG_SERVER_ID" \
 jf nuget-config "--server-id-resolve=$JFROG_SERVER_ID" \
     "--repo-resolve=$NUGET_VIRTUAL_REPO" "--nuget-v2=$NUGET_V2"
 
-# Configure each scenario so `jf ca` works directly from its directory.
+# Configure each scenario's audit feed. The immaturity project cannot complete
+# jf ca while its blocked version is absent from that feed; use audit.sh there.
 for SCENARIO in baseline immaturity vulnerability license cvs; do
     (
         cd "$ROOT/scenarios/$SCENARIO"
@@ -63,5 +64,6 @@ done
 
 echo "Configured .NET, NuGet Curation audit, and local NuGet.Config for $NUGET_VIRTUAL_REPO ($PROTOCOL)."
 echo "Baseline audit: jf ca (0 blocked packages expected)"
-echo "Scenario audits: (cd scenarios/<scenario> && jf ca)"
+echo "Scenario audits: cd scenarios/<baseline|vulnerability|license|cvs>, then run jf ca"
+echo "Immaturity block: ./scripts/demo.sh immaturity; ./scripts/audit.sh FluentValidation"
 echo "Combined CVE and license audit: (cd audit-issues && jf ca)"

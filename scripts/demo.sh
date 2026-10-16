@@ -52,10 +52,13 @@ echo "NuGet V3 (CVS) enabled: $([[ "$NUGET_V2" == false ]] && echo yes || echo n
 echo "Isolated NuGet packages: $NUGET_PACKAGES"
 echo "Isolated NuGet HTTP cache: $NUGET_HTTP_CACHE_PATH"
 echo "Log: $LOG"
-echo "Matching Curation audit: (cd $ROOT/scenarios/$SCENARIO && jf ca)"
 if [[ "$SCENARIO" == immaturity ]]; then
-    echo "If jf ca stops with NU1102, inspect the block: $ROOT/scripts/audit.sh FluentValidation"
-elif [[ "$SCENARIO" == cvs ]]; then
+    echo "Curation Downloads audit: $ROOT/scripts/audit.sh FluentValidation"
+    echo "jf ca cannot restore this project while the blocked 12.2.0 version is absent from the audit feed."
+else
+    echo "Matching Curation audit: (cd $ROOT/scenarios/$SCENARIO && jf ca)"
+fi
+if [[ "$SCENARIO" == cvs ]]; then
     echo "Inspect the version selection: $ROOT/scripts/audit.sh --cvs FluentValidation"
 fi
 
